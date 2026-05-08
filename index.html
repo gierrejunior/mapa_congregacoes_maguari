@@ -18,41 +18,62 @@
 
     <div id="map"></div>
 
-    <!-- Busca no desktop (sempre visível) -->
-    <div class="search-container" id="desktopSearch">
-      <input
-        type="text"
-        id="searchInput"
-        class="search-input"
-        placeholder="🔍 Buscar congregação..."
-      >
+    <!-- BARRA LATERAL DE AÇÕES -->
+    <div class="sidebar-actions">
+      <button id="searchSidebarBtn" class="sidebar-btn" title="Buscar congregação" aria-label="Buscar">
+        🔍
+      </button>
+      <button id="basemapSidebarBtn" class="sidebar-btn" title="Camadas do mapa" aria-label="Camadas">
+        🗺️
+      </button>
+      <button id="zoomFitSidebarBtn" class="sidebar-btn" title="Encaixar todos" aria-label="Encaixar todos">
+        🎯
+      </button>
+      <button id="helpSidebarBtn" class="sidebar-btn" title="Ajuda e atalhos" aria-label="Ajuda">
+        ❓
+      </button>
     </div>
 
-    <!-- Botão de lupa flutuante (mobile) -->
-    <button id="searchToggleBtn" class="search-toggle-btn hidden-desktop" title="Abrir busca" aria-label="Buscar congregação">
-      🔍
-    </button>
-
-    <!-- Chip de filtro ativo -->
-    <div id="filterChip" class="filter-chip hidden">
-      <span id="filterChipText"></span>
-      <button id="filterChipClose" class="filter-chip-close" aria-label="Limpar filtro">×</button>
+    <!-- MINI STATS PILL (sempre visível) -->
+    <div class="mini-stats">
+      <span class="stats-text">77</span>
     </div>
 
-    <!-- Botão de camadas/basemap -->
-    <button id="basemapToggleBtn" class="basemap-toggle-btn" title="Escolher mapa base" aria-label="Camadas do mapa">
-      🗺️
-    </button>
+    <!-- MINI LEGEND (sempre visível) -->
+    <div class="mini-legend">
+      <div class="legend-item">
+        <span class="legend-icon">⛪</span>
+      </div>
+      <div class="legend-item">
+        <svg class="legend-boundary" viewBox="0 0 20 4">
+          <line x1="0" y1="2" x2="20" y2="2" stroke="#16a085" stroke-width="2" stroke-dasharray="5,3"/>
+        </svg>
+      </div>
+    </div>
 
-    <!-- Botão de funções -->
-    <button id="functionsToggleBtn" class="functions-toggle-btn" title="Mais funções" aria-label="Abrir menu de funções">
-      ⋮
-    </button>
+    <!-- PAINEL DE PESQUISA COMPACTO (mobile) -->
+    <div id="searchPanel" class="search-panel hidden">
+      <div class="search-panel-header">
+        <h3>Buscar Congregação</h3>
+        <button id="searchPanelClose" class="search-panel-close" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="search-panel-content">
+        <input
+          type="text"
+          id="searchInput"
+          class="search-panel-input"
+          placeholder="Digite o nome..."
+        >
+        <div class="search-results-info">
+          <span id="searchResultsCount">77 congregações</span>
+        </div>
+      </div>
+    </div>
 
-    <!-- Painel de basemap (bottom sheet) -->
+    <!-- PAINEL DE BASEMAP -->
     <div id="basemapPanel" class="basemap-panel hidden">
       <div class="basemap-panel-header">
-        <h3>Selecione o Mapa Base</h3>
+        <h3>Camadas do Mapa</h3>
         <button class="basemap-panel-close" id="basemapPanelClose" aria-label="Fechar">&times;</button>
       </div>
       <div class="basemap-panel-content" id="basemapPanelContent">
@@ -60,53 +81,7 @@
       </div>
     </div>
 
-    <!-- Gaveta de funções (bottom sheet) -->
-    <div id="functionsPanel" class="functions-panel hidden">
-      <div class="functions-panel-header">
-        <h3>Funções</h3>
-        <button class="functions-panel-close" id="functionsPanelClose" aria-label="Fechar">&times;</button>
-      </div>
-      <div class="functions-panel-content">
-        <!-- Resumo -->
-        <div class="functions-section">
-          <h4>Resumo</h4>
-          <div class="stats-compact">
-            <div class="stats-label">Total de Congregações</div>
-            <div class="stats-value">0</div>
-          </div>
-        </div>
-
-        <!-- Legenda -->
-        <div class="functions-section">
-          <h4>Legenda</h4>
-          <div class="legend-compact">
-            <div class="legend-item-compact">
-              <span class="legend-marker-compact">⛪</span>
-              <span>Congregação</span>
-            </div>
-            <div class="legend-item-compact">
-              <div class="legend-polygon-compact"></div>
-              <span>Limite do Campo</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Ações -->
-        <div class="functions-section">
-          <h4>Ações</h4>
-          <div class="functions-actions">
-            <button id="zoomFitBtn" class="action-link" title="Encaixar todos os marcadores">
-              🎯 Encaixar todos
-            </button>
-            <button id="helpBtn" class="action-link" title="Ajuda e atalhos">
-              ❓ Ajuda e Atalhos
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de ajuda (Help) -->
+    <!-- MODAL DE AJUDA -->
     <div id="helpModal" class="modal hidden">
       <div class="modal-content">
         <div class="modal-header">
@@ -116,11 +91,10 @@
         <div class="modal-body">
           <h3>Como usar o mapa</h3>
           <ul>
-            <li><strong>🔍 Buscar:</strong> Digite o nome de uma congregação para filtrar marcadores</li>
-            <li><strong>🎯 Encaixar:</strong> Clique no botão 🎯 para visualizar todos os marcadores</li>
+            <li><strong>🔍 Buscar:</strong> Clique na lupa para buscar congregações</li>
+            <li><strong>🎯 Encaixar:</strong> Clique em 🎯 para visualizar todas as congregações</li>
             <li><strong>📍 Marcadores:</strong> Clique em qualquer congregação para ver detalhes</li>
-            <li><strong>🗺️ Basemaps:</strong> Use o botão de camadas para trocar o mapa</li>
-            <li><strong>📋 Copiar:</strong> Use o botão no popup para copiar as coordenadas</li>
+            <li><strong>🗺️ Camadas:</strong> Use o botão de camadas para trocar o mapa</li>
           </ul>
           <h3>Navegação GPS</h3>
           <p>Clique em um marcador e use os botões para abrir em:</p>
@@ -130,8 +104,8 @@
           </ul>
           <h3>Atalhos de Teclado</h3>
           <ul>
-            <li><strong>ESC:</strong> Limpar busca</li>
-            <li><strong>F:</strong> Encaixar todos os marcadores</li>
+            <li><strong>ESC:</strong> Fechar painel de busca ou ajuda</li>
+            <li><strong>F:</strong> Encaixar todas as congregações</li>
           </ul>
           <p style="margin-top: 20px; font-size: 12px; color: #666;">
             Mapa de Congregações - Campo Maguari, Ananindeua - PA<br>

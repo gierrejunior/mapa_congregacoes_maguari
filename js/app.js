@@ -196,28 +196,38 @@ function copyCoordinates(lat, lng) {
 // FILTRO E BUSCA
 // ============================================
 function setupSearch() {
+  const searchSidebarBtn = document.getElementById('searchSidebarBtn');
   const searchInput = document.getElementById('searchInput');
-  const searchToggleBtn = document.getElementById('searchToggleBtn');
+  const searchPanel = document.getElementById('searchPanel');
+  const searchPanelClose = document.getElementById('searchPanelClose');
   
+  // Abrir painel de busca ao clicar no botão
+  if (searchSidebarBtn) {
+    searchSidebarBtn.addEventListener('click', () => {
+      searchPanel.classList.remove('hidden');
+      if (searchInput) {
+        searchInput.focus();
+      }
+    });
+  }
+  
+  // Fechar painel de busca
+  if (searchPanelClose) {
+    searchPanelClose.addEventListener('click', () => {
+      searchPanel.classList.add('hidden');
+    });
+  }
+  
+  // Filtrar ao digitar
   if (searchInput) {
     searchInput.addEventListener('input', filterMarkers);
   }
 
-  if (searchToggleBtn) {
-    searchToggleBtn.addEventListener('click', () => {
-      // Abrir painel de busca no mobile (poderia ser expandir o campo)
-      // Por enquanto, apenas dar foco no input
-      if (searchInput) {
-        searchInput.focus();
-        // Em uma implementação mais robusta, seria um campo flutuante separado
-      }
-    });
-  }
-
-  // Limpar filtro ao pressionar ESC
+  // Limpar filtro ao pressionar ESC e fechar painel
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       clearFilter();
+      searchPanel.classList.add('hidden');
     }
   });
 }
@@ -247,7 +257,6 @@ function filterMarkers() {
 
   filterState.activeCount = visibleCount;
   updateStats();
-  updateFilterChip();
 }
 
 function clearFilter() {
@@ -261,59 +270,48 @@ function clearFilter() {
   });
   
   updateStats();
-  updateFilterChip();
 }
 
 // ============================================
 // ATUALIZAR STATS
 // ============================================
 function updateStats() {
-  const statsValues = document.querySelectorAll('.stats-value');
-  statsValues.forEach(el => {
+  const statsText = document.querySelector('.mini-stats .stats-text');
+  const searchResultsCount = document.getElementById('searchResultsCount');
+  
+  if (statsText) {
     if (filterState.query === '') {
-      el.textContent = filterState.totalCount;
+      statsText.textContent = filterState.totalCount;
     } else {
-      el.textContent = `${filterState.activeCount} de ${filterState.totalCount}`;
+      statsText.textContent = `${filterState.activeCount}/${filterState.totalCount}`;
     }
-  });
-}
-
-// ============================================
-// CHIP DE FILTRO ATIVO
-// ============================================
-function updateFilterChip() {
-  const filterChip = document.getElementById('filterChip');
-  const filterChipText = document.getElementById('filterChipText');
-  const filterChipClose = document.getElementById('filterChipClose');
-  
-  if (filterState.query === '') {
-    filterChip.classList.add('hidden');
-  } else {
-    filterChip.classList.remove('hidden');
-    filterChipText.textContent = filterState.query;
   }
   
-  if (filterChipClose) {
-    filterChipClose.addEventListener('click', (e) => {
-      e.stopPropagation();
-      clearFilter();
-    });
+  if (searchResultsCount) {
+    if (filterState.query === '') {
+      searchResultsCount.textContent = `${filterState.totalCount} congregações`;
+    } else {
+      searchResultsCount.textContent = `${filterState.activeCount} de ${filterState.totalCount} encontradas`;
+    }
   }
 }
 
 // ============================================
-// PAINÉIS (Basemap e Funções)
+// PAINÉIS (Basemap)
 // ============================================
 function setupPanels() {
   // Painel de basemap
-  const basemapToggleBtn = document.getElementById('basemapToggleBtn');
+  const basemapSidebarBtn = document.getElementById('basemapSidebarBtn');
   const basemapPanel = document.getElementById('basemapPanel');
   const basemapPanelClose = document.getElementById('basemapPanelClose');
+  const searchPanel = document.getElementById('searchPanel');
+  const helpModal = document.getElementById('helpModal');
   
-  if (basemapToggleBtn) {
-    basemapToggleBtn.addEventListener('click', () => {
+  if (basemapSidebarBtn) {
+    basemapSidebarBtn.addEventListener('click', () => {
       basemapPanel.classList.toggle('hidden');
-      document.getElementById('functionsPanel').classList.add('hidden');
+      searchPanel.classList.add('hidden');
+      helpModal.classList.add('hidden');
     });
   }
   
@@ -326,30 +324,6 @@ function setupPanels() {
   basemapPanel.addEventListener('click', (e) => {
     if (e.target === basemapPanel) {
       basemapPanel.classList.add('hidden');
-    }
-  });
-  
-  // Painel de funções
-  const functionsToggleBtn = document.getElementById('functionsToggleBtn');
-  const functionsPanel = document.getElementById('functionsPanel');
-  const functionsPanelClose = document.getElementById('functionsPanelClose');
-  
-  if (functionsToggleBtn) {
-    functionsToggleBtn.addEventListener('click', () => {
-      functionsPanel.classList.toggle('hidden');
-      basemapPanel.classList.add('hidden');
-    });
-  }
-  
-  if (functionsPanelClose) {
-    functionsPanelClose.addEventListener('click', () => {
-      functionsPanel.classList.add('hidden');
-    });
-  }
-  
-  functionsPanel.addEventListener('click', (e) => {
-    if (e.target === functionsPanel) {
-      functionsPanel.classList.add('hidden');
     }
   });
 }
@@ -398,19 +372,22 @@ function switchBasemap(basemapName) {
 // CONTROLES
 // ============================================
 function setupControls() {
-  const zoomFitBtn = document.getElementById('zoomFitBtn');
-  const helpBtn = document.getElementById('helpBtn');
+  const zoomFitSidebarBtn = document.getElementById('zoomFitSidebarBtn');
+  const helpSidebarBtn = document.getElementById('helpSidebarBtn');
   const helpModal = document.getElementById('helpModal');
   const closeHelpBtn = document.getElementById('closeHelpBtn');
+  const basemapPanel = document.getElementById('basemapPanel');
+  const searchPanel = document.getElementById('searchPanel');
 
-  if (zoomFitBtn) {
-    zoomFitBtn.addEventListener('click', zoomToFitAll);
+  if (zoomFitSidebarBtn) {
+    zoomFitSidebarBtn.addEventListener('click', zoomToFitAll);
   }
 
-  if (helpBtn) {
-    helpBtn.addEventListener('click', () => {
+  if (helpSidebarBtn) {
+    helpSidebarBtn.addEventListener('click', () => {
       helpModal.classList.remove('hidden');
-      document.getElementById('functionsPanel').classList.add('hidden');
+      basemapPanel.classList.add('hidden');
+      searchPanel.classList.add('hidden');
     });
   }
 
@@ -432,8 +409,8 @@ function setupControls() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       helpModal.classList.add('hidden');
-      document.getElementById('basemapPanel').classList.add('hidden');
-      document.getElementById('functionsPanel').classList.add('hidden');
+      basemapPanel.classList.add('hidden');
+      searchPanel.classList.add('hidden');
     }
     if (e.key === 'f' || e.key === 'F') {
       zoomToFitAll();
