@@ -270,11 +270,13 @@ function setupSearch() {
 function filterMarkers() {
   const searchInput = document.getElementById('searchInput');
   const query = searchInput.value.toLowerCase().trim();
-  
+
   filterState.query = query;
-  
+
   // Atualizar visibilidade dos marcadores
   let visibleCount = 0;
+  const visibleFeatures = [];
+
   congregationsLayer.eachLayer(marker => {
     const latlng = marker.getLatLng();
     const feature = congregationsData.find(f => {
@@ -285,6 +287,7 @@ function filterMarkers() {
     if (feature && feature.properties.Name.toLowerCase().includes(query)) {
       marker.setOpacity(1);
       visibleCount++;
+      visibleFeatures.push(feature);
     } else {
       marker.setOpacity(0.15);
     }
@@ -292,6 +295,8 @@ function filterMarkers() {
 
   filterState.activeCount = visibleCount;
   updateStats();
+  populateSearchResults(visibleFeatures);
+  autoZoomResults(visibleFeatures);
 }
 
 function clearFilter() {
@@ -299,12 +304,87 @@ function clearFilter() {
   searchInput.value = '';
   filterState.query = '';
   filterState.activeCount = congregationsData.length;
-  
+
   congregationsLayer.eachLayer(marker => {
     marker.setOpacity(1);
   });
-  
+
   updateStats();
+  populateSearchResults([]);
+}
+
+// ============================================
+// POPULAR LISTA DE RESULTADOS DE BUSCA
+// ============================================
+function populateSearchResults(features) {
+  const resultsList = document.getElementById('searchResultsList');
+  resultsList.innerHTML = '';
+
+  if (features.length === 0) {
+    return;
+  }
+
+  features.forEach((feature, index) => {
+    const item = document.createElement('div');
+    item.className = 'congregation-result-item';
+    item.textContent = feature.properties.Name;
+    item.dataset.index = index;
+    item.dataset.lat = feature.geometry.coordinates[1];
+    item.dataset.lng = feature.geometry.coordinates[0];
+
+    item.addEventListener('click', () => {
+      // Encontrar o marcador correspondente
+      const marker = congregationsLayer.getLayers().find(m => {
+        const latlng = m.getLatLng();
+        const [lng, lat] = feature.geometry.coordinates;
+        return Math.abs(latlng.lat - lat) < 0.0001 && Math.abs(latlng.lng - lng) < 0.0001;
+      });
+
+      if (marker) {
+        // Zoom no marcador
+        map.setView(marker.getLatLng(), 16);
+        // Abrir popup
+        marker.openPopup();
+      }
+    });
+
+    resultsList.appendChild(item);
+  });
+}
+
+// ============================================
+// AUTO-ZOOM BASEADO NOS RESULTADOS
+// ============================================
+function autoZoomResults(features) {
+  if (features.length === 0) {
+    return;
+  }
+
+  if (features.length === 1) {
+    // 1 resultado: zoom no marcador
+    const [lng, lat] = features[0].geometry.coordinates;
+    map.setView([lat, lng], 16);
+  } else if (features.length > 1) {
+    // Múltiplos resultados: ajustar bounds para mostrar todos
+    const bounds = L.latLngBounds(
+      features.map(f => {
+        const [lng, lat] = f.geometry.coordinates;
+        return [lat, lng];
+      })
+    );
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }
+}
+
+// ============================================
+// FORMATAR TEXTO DE ESTATÍSTICAS
+// ============================================
+function formatStatsText(activeCount, totalCount, query) {
+  if (query === '') {
+    return `${totalCount} congregações`;
+  } else {
+    return `${activeCount} de ${totalCount} congregações`;
+  }
 }
 
 // ============================================
@@ -313,21 +393,15 @@ function clearFilter() {
 function updateStats() {
   const statsText = document.querySelector('.mini-stats .stats-text');
   const searchResultsCount = document.getElementById('searchResultsCount');
-  
+
+  const formattedText = formatStatsText(filterState.activeCount, filterState.totalCount, filterState.query);
+
   if (statsText) {
-    if (filterState.query === '') {
-      statsText.textContent = filterState.totalCount;
-    } else {
-      statsText.textContent = `${filterState.activeCount}/${filterState.totalCount}`;
-    }
+    statsText.textContent = formattedText;
   }
-  
+
   if (searchResultsCount) {
-    if (filterState.query === '') {
-      searchResultsCount.textContent = `${filterState.totalCount} congregações`;
-    } else {
-      searchResultsCount.textContent = `${filterState.activeCount} de ${filterState.totalCount} encontradas`;
-    }
+    searchResultsCount.textContent = formattedText;
   }
 }
 
@@ -458,8 +532,16 @@ function zoomToFitAll() {
     // Contar apenas marcadores visíveis
     const visibleLayers = congregationsLayer.getLayers().filter(m => m.getOpacity() > 0.5);
     if (visibleLayers.length > 0) {
-      const bounds = L.featureGroup(visibleLayers).getBounds();
-      map.fitBounds(bounds, { padding: [50, 50] });
+      if (visibleLayers.length === 1) {
+        // 1 marcador: zoom nele
+        map.setView(visibleLayers[0].getLatLng(), 16);
+      } else {
+        // Múltiplos: fit bounds
+        const bounds = L.featureGroup(visibleLayers).getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      }
     }
   }
 }

@@ -149,11 +149,19 @@ header p {
 .mini-legend .legend-icon {
   font-size: 18px;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .mini-legend .legend-boundary {
   width: 30px;
   height: 8px;
+  flex-shrink: 0;
+}
+
+.mini-legend .legend-label {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
 }
 
 /* ============================================
@@ -231,6 +239,36 @@ header p {
   font-size: 12px;
   color: #666;
   padding: 0 4px;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 250px;
+  overflow-y: auto;
+  border-top: 1px solid #e0e0e0;
+  margin-top: 8px;
+}
+
+.congregation-result-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.congregation-result-item:hover {
+  background: #f5f5f5;
+  color: #16a085;
+  font-weight: 500;
+}
+
+.congregation-result-item:last-child {
+  border-bottom: none;
 }
 
 /* ============================================
@@ -591,6 +629,15 @@ header p {
 
   .search-panel-header h3 {
     font-size: 14px;
+  }
+
+  .search-results-list {
+    max-height: 200px;
+  }
+
+  .congregation-result-item {
+    padding: 8px 10px;
+    font-size: 12px;
   }
 
   .modal-content {
