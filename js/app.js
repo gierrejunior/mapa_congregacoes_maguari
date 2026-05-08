@@ -2,6 +2,7 @@ let map;
 let congregationsLayer;
 let boundaryLayer;
 let congregationsData = [];
+let currentBasemap = 'osm';
 
 async function loadGeoJSON(filePath) {
   const response = await fetch(filePath);
@@ -9,15 +10,68 @@ async function loadGeoJSON(filePath) {
   return response.json();
 }
 
+const basemaps = {
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19,
+    className: 'basemap-osm'
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '© Esri',
+    maxZoom: 18,
+    className: 'basemap-satellite'
+  }),
+  topographic: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap & SRTM',
+    maxZoom: 17,
+    className: 'basemap-topo'
+  }),
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap & CartoDB',
+    maxZoom: 19,
+    className: 'basemap-dark'
+  })
+};
+
 function initMap() {
   map = L.map('map').setView([-1.345, -48.380], 14);
+  basemaps.osm.addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-    maxZoom: 19,
-  }).addTo(map);
+  const basemapControl = L.control({ position: 'bottomright' });
+  basemapControl.onAdd = function() {
+    const div = L.DomUtil.create('div', 'basemap-switcher');
+    div.innerHTML = `
+      <div class="basemap-buttons">
+        <button class="basemap-btn active" data-basemap="osm" title="OpenStreetMap">🗺️ Mapa</button>
+        <button class="basemap-btn" data-basemap="satellite" title="Satélite">🛰️ Satélite</button>
+        <button class="basemap-btn" data-basemap="topographic" title="Topográfico">⛰️ Topo</button>
+        <button class="basemap-btn" data-basemap="dark" title="Escuro">🌙 Escuro</button>
+      </div>
+    `;
+    div.addEventListener('click', e => {
+      if (e.target.classList.contains('basemap-btn')) {
+        const basemapName = e.target.dataset.basemap;
+        switchBasemap(basemapName);
+        document.querySelectorAll('.basemap-btn').forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
+      }
+    });
+    return div;
+  };
+  basemapControl.addTo(map);
 
   loadData();
+  setupSearch();
+}
+
+function switchBasemap(basemapName) {
+  if (currentBasemap && basemaps[currentBasemap]) {
+    map.removeLayer(basemaps[currentBasemap]);
+  }
+  if (basemaps[basemapName]) {
+    basemaps[basemapName].addTo(map);
+    currentBasemap = basemapName;
+  }
 }
 
 async function loadData() {
@@ -60,16 +114,25 @@ function renderMarkers() {
     const { geometry, properties } = feature;
     const [lng, lat] = geometry.coordinates;
 
-    const marker = L.circleMarker([lat, lng], {
-      radius: 8,
-      fillColor: '#667eea',
-      color: '#fff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
+    const icon = L.divIcon({
+      html: `<div class="church-marker">⛪</div>`,
+      className: 'church-icon',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32]
     });
 
+    const marker = L.marker([lat, lng], { icon });
     marker.bindPopup(createPopup(properties, lat, lng));
+    marker.on('click', function() {
+      congregationsLayer.eachLayer(m => {
+        if (m !== marker) {
+          m.setOpacity(0.6);
+        }
+      });
+      marker.setOpacity(1);
+    });
+
     congregationsLayer.addLayer(marker);
   });
 
@@ -115,18 +178,26 @@ function setupSearch() {
 
 function filterMarkers() {
   const searchInput = document.getElementById('searchInput');
-  const query = searchInput.value.toLowerCase();
+  const query = searchInput.value.toLowerCase().trim();
+
+  if (!query) {
+    congregationsLayer.eachLayer(marker => {
+      marker.setOpacity(1);
+    });
+    return;
+  }
 
   congregationsLayer.eachLayer(marker => {
+    const latlng = marker.getLatLng();
     const feature = congregationsData.find(f => {
       const [lng, lat] = f.geometry.coordinates;
-      return marker.getLatLng().lat === lat && marker.getLatLng().lng === lng;
+      return Math.abs(latlng.lat - lat) < 0.0001 && Math.abs(latlng.lng - lng) < 0.0001;
     });
 
     if (feature && feature.properties.Name.toLowerCase().includes(query)) {
-      marker.setStyle({ opacity: 1, fillOpacity: 0.8 });
+      marker.setOpacity(1);
     } else {
-      marker.setStyle({ opacity: 0.2, fillOpacity: 0.1 });
+      marker.setOpacity(0.15);
     }
   });
 }
