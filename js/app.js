@@ -345,6 +345,8 @@ function populateSearchResults(features) {
         map.setView(marker.getLatLng(), 16);
         // Abrir popup
         marker.openPopup();
+        // Limpar filtro automaticamente (fecha painel e restaura todos os marcadores)
+        clearFilter();
       }
     });
 
@@ -528,16 +530,28 @@ function setupControls() {
 }
 
 function zoomToFitAll() {
+  // Limpar qualquer filtro ativo
+  clearFilter();
+
   if (congregationsLayer && congregationsLayer.getLayers().length > 0) {
-    // Contar apenas marcadores visíveis
-    const visibleLayers = congregationsLayer.getLayers().filter(m => m.getOpacity() > 0.5);
-    if (visibleLayers.length > 0) {
-      if (visibleLayers.length === 1) {
+    // Usar todos os marcadores (sem filtro)
+    const allLayers = congregationsLayer.getLayers();
+    if (allLayers.length > 0) {
+      if (allLayers.length === 1) {
         // 1 marcador: zoom nele
-        map.setView(visibleLayers[0].getLatLng(), 16);
+        map.setView(allLayers[0].getLatLng(), 16);
       } else {
-        // Múltiplos: fit bounds
-        const bounds = L.featureGroup(visibleLayers).getBounds();
+        // Múltiplos: fit bounds de todos os marcadores + limite do campo
+        const bounds = L.featureGroup(allLayers).getBounds();
+
+        // Incluir limite do campo nos bounds se existir
+        if (fieldBoundaryLayer) {
+          const boundaryBounds = fieldBoundaryLayer.getBounds();
+          if (boundaryBounds.isValid()) {
+            bounds.extend(boundaryBounds);
+          }
+        }
+
         if (bounds.isValid()) {
           map.fitBounds(bounds, { padding: [50, 50] });
         }

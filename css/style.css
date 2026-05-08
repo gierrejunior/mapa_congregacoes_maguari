@@ -126,7 +126,7 @@ header p {
    ============================================ */
 .mini-legend {
   position: fixed;
-  bottom: 80px;
+  bottom: 20px;
   left: 16px;
   background: white;
   border-radius: 12px;
