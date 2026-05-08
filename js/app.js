@@ -1,80 +1,93 @@
+// ============================================
+// ESTADO GLOBAL
+// ============================================
 let map;
 let congregationsLayer;
 let boundaryLayer;
 let congregationsData = [];
 let currentBasemap = 'osm';
 
+// Estado do filtro (global)
+const filterState = {
+  query: '',
+  activeCount: 0,
+  totalCount: 0
+};
+
+// ============================================
+// BASEMAPS
+// ============================================
+const basemaps = {
+  osm: {
+    name: 'OpenStreetMap',
+    tile: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19
+    })
+  },
+  light: {
+    name: 'CARTO Light',
+    tile: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© CARTO',
+      maxZoom: 20
+    })
+  },
+  satellite: {
+    name: 'Satélite (Esri)',
+    tile: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '© Esri',
+      maxZoom: 18
+    })
+  },
+  topo: {
+    name: 'Topográfico',
+    tile: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenTopoMap',
+      maxZoom: 17
+    })
+  },
+  dark: {
+    name: 'CARTO Dark',
+    tile: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© CARTO',
+      maxZoom: 20
+    })
+  }
+};
+
+// ============================================
+// CARREGAR DADOS
+// ============================================
 async function loadGeoJSON(filePath) {
   const response = await fetch(filePath);
   if (!response.ok) throw new Error(`Failed to load ${filePath}`);
   return response.json();
 }
 
-const basemaps = {
-  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19,
-    className: 'basemap-osm'
-  }),
-  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '© Esri',
-    maxZoom: 18,
-    className: 'basemap-satellite'
-  }),
-  topographic: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap & SRTM',
-    maxZoom: 17,
-    className: 'basemap-topo'
-  }),
-  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap & CartoDB',
-    maxZoom: 19,
-    className: 'basemap-dark'
-  })
-};
-
+// ============================================
+// INICIALIZAR MAPA
+// ============================================
 function initMap() {
   map = L.map('map').setView([-1.345, -48.380], 14);
-  basemaps.osm.addTo(map);
-
-  const basemapControl = L.control({ position: 'bottomright' });
-  basemapControl.onAdd = function() {
-    const div = L.DomUtil.create('div', 'basemap-switcher');
-    div.innerHTML = `
-      <div class="basemap-buttons">
-        <button class="basemap-btn active" data-basemap="osm" title="OpenStreetMap">🗺️ Mapa</button>
-        <button class="basemap-btn" data-basemap="satellite" title="Satélite">🛰️ Satélite</button>
-        <button class="basemap-btn" data-basemap="topographic" title="Topográfico">⛰️ Topo</button>
-        <button class="basemap-btn" data-basemap="dark" title="Escuro">🌙 Escuro</button>
-      </div>
-    `;
-    div.addEventListener('click', e => {
-      if (e.target.classList.contains('basemap-btn')) {
-        const basemapName = e.target.dataset.basemap;
-        switchBasemap(basemapName);
-        document.querySelectorAll('.basemap-btn').forEach(btn => btn.classList.remove('active'));
-        e.target.classList.add('active');
-      }
-    });
-    return div;
-  };
-  basemapControl.addTo(map);
-
+  
+  // Carregar basemap do localStorage ou usar padrão
+  const savedBasemap = localStorage.getItem('selectedBasemap') || 'osm';
+  currentBasemap = savedBasemap;
+  basemaps[currentBasemap].tile.addTo(map);
+  
+  // Carregar dados
   loadData();
+  
+  // Inicializar UI
   setupSearch();
+  setupPanels();
   setupControls();
+  setupBasemapPanel();
 }
 
-function switchBasemap(basemapName) {
-  if (currentBasemap && basemaps[currentBasemap]) {
-    map.removeLayer(basemaps[currentBasemap]);
-  }
-  if (basemaps[basemapName]) {
-    basemaps[basemapName].addTo(map);
-    currentBasemap = basemapName;
-  }
-}
-
+// ============================================
+// CARREGAR DADOS
+// ============================================
 async function loadData() {
   try {
     const [congregacoes, limiteData] = await Promise.all([
@@ -83,6 +96,9 @@ async function loadData() {
     ]);
 
     congregationsData = congregacoes.features;
+    filterState.totalCount = congregationsData.length;
+    filterState.activeCount = congregationsData.length;
+    
     renderBoundary(limiteData);
     renderMarkers();
     updateStats();
@@ -92,20 +108,26 @@ async function loadData() {
   }
 }
 
+// ============================================
+// RENDERIZAR LIMITE DO CAMPO
+// ============================================
 function renderBoundary(data) {
   if (boundaryLayer) map.removeLayer(boundaryLayer);
 
   boundaryLayer = L.geoJSON(data, {
     style: {
-      color: '#667eea',
+      color: '#16a085',
       weight: 2,
-      opacity: 0.6,
+      opacity: 0.5,
       dashArray: '5, 5',
       fillOpacity: 0.05,
     }
   }).addTo(map);
 }
 
+// ============================================
+// RENDERIZAR MARCADORES
+// ============================================
 function renderMarkers() {
   if (congregationsLayer) map.removeLayer(congregationsLayer);
 
@@ -118,28 +140,28 @@ function renderMarkers() {
     const icon = L.divIcon({
       html: `<div class="church-marker">⛪</div>`,
       className: 'church-icon',
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32]
+      iconSize: [24, 24],
+      iconAnchor: [12, 24],
+      popupAnchor: [0, -24]
     });
 
     const marker = L.marker([lat, lng], { icon });
     marker.bindPopup(createPopup(properties, lat, lng));
-    marker.on('click', function() {
-      congregationsLayer.eachLayer(m => {
-        if (m !== marker) {
-          m.setOpacity(0.6);
-        }
-      });
-      marker.setOpacity(1);
-    });
-
+    
+    // Verificar se o marcador deve ser visível conforme o filtro
+    const isVisible = filterState.query === '' || 
+                     properties.Name.toLowerCase().includes(filterState.query.toLowerCase());
+    
+    marker.setOpacity(isVisible ? 1 : 0.15);
     congregationsLayer.addLayer(marker);
   });
 
   congregationsLayer.addTo(map);
 }
 
+// ============================================
+// CRIAR POPUP
+// ============================================
 function createPopup(properties, lat, lng) {
   const div = document.createElement('div');
   div.innerHTML = `
@@ -150,13 +172,13 @@ function createPopup(properties, lat, lng) {
     </div>
     <div class="popup-actions">
       <a href="https://waze.com/ul?ll=${lat},${lng}&navigate=yes" target="_blank" class="action-btn btn-waze">
-        📍 Abrir no Waze
+        📍 Waze
       </a>
       <a href="https://maps.google.com/?q=${lat},${lng}" target="_blank" class="action-btn btn-gmaps">
         🗺️ Google Maps
       </a>
       <button class="action-btn btn-copy" onclick="copyCoordinates('${lat}', '${lng}')">
-        📋 Copiar Coordenadas
+        📋 Copiar
       </button>
     </div>
   `;
@@ -170,24 +192,44 @@ function copyCoordinates(lat, lng) {
   });
 }
 
+// ============================================
+// FILTRO E BUSCA
+// ============================================
 function setupSearch() {
   const searchInput = document.getElementById('searchInput');
-  if (!searchInput) return;
+  const searchToggleBtn = document.getElementById('searchToggleBtn');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', filterMarkers);
+  }
 
-  searchInput.addEventListener('input', filterMarkers);
+  if (searchToggleBtn) {
+    searchToggleBtn.addEventListener('click', () => {
+      // Abrir painel de busca no mobile (poderia ser expandir o campo)
+      // Por enquanto, apenas dar foco no input
+      if (searchInput) {
+        searchInput.focus();
+        // Em uma implementação mais robusta, seria um campo flutuante separado
+      }
+    });
+  }
+
+  // Limpar filtro ao pressionar ESC
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      clearFilter();
+    }
+  });
 }
 
 function filterMarkers() {
   const searchInput = document.getElementById('searchInput');
   const query = searchInput.value.toLowerCase().trim();
-
-  if (!query) {
-    congregationsLayer.eachLayer(marker => {
-      marker.setOpacity(1);
-    });
-    return;
-  }
-
+  
+  filterState.query = query;
+  
+  // Atualizar visibilidade dos marcadores
+  let visibleCount = 0;
   congregationsLayer.eachLayer(marker => {
     const latlng = marker.getLatLng();
     const feature = congregationsData.find(f => {
@@ -197,19 +239,164 @@ function filterMarkers() {
 
     if (feature && feature.properties.Name.toLowerCase().includes(query)) {
       marker.setOpacity(1);
+      visibleCount++;
     } else {
       marker.setOpacity(0.15);
     }
   });
+
+  filterState.activeCount = visibleCount;
+  updateStats();
+  updateFilterChip();
 }
 
+function clearFilter() {
+  const searchInput = document.getElementById('searchInput');
+  searchInput.value = '';
+  filterState.query = '';
+  filterState.activeCount = congregationsData.length;
+  
+  congregationsLayer.eachLayer(marker => {
+    marker.setOpacity(1);
+  });
+  
+  updateStats();
+  updateFilterChip();
+}
+
+// ============================================
+// ATUALIZAR STATS
+// ============================================
 function updateStats() {
-  const statsValue = document.querySelector('.stats-value');
-  if (statsValue) {
-    statsValue.textContent = congregationsData.length;
+  const statsValues = document.querySelectorAll('.stats-value');
+  statsValues.forEach(el => {
+    if (filterState.query === '') {
+      el.textContent = filterState.totalCount;
+    } else {
+      el.textContent = `${filterState.activeCount} de ${filterState.totalCount}`;
+    }
+  });
+}
+
+// ============================================
+// CHIP DE FILTRO ATIVO
+// ============================================
+function updateFilterChip() {
+  const filterChip = document.getElementById('filterChip');
+  const filterChipText = document.getElementById('filterChipText');
+  const filterChipClose = document.getElementById('filterChipClose');
+  
+  if (filterState.query === '') {
+    filterChip.classList.add('hidden');
+  } else {
+    filterChip.classList.remove('hidden');
+    filterChipText.textContent = filterState.query;
+  }
+  
+  if (filterChipClose) {
+    filterChipClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearFilter();
+    });
   }
 }
 
+// ============================================
+// PAINÉIS (Basemap e Funções)
+// ============================================
+function setupPanels() {
+  // Painel de basemap
+  const basemapToggleBtn = document.getElementById('basemapToggleBtn');
+  const basemapPanel = document.getElementById('basemapPanel');
+  const basemapPanelClose = document.getElementById('basemapPanelClose');
+  
+  if (basemapToggleBtn) {
+    basemapToggleBtn.addEventListener('click', () => {
+      basemapPanel.classList.toggle('hidden');
+      document.getElementById('functionsPanel').classList.add('hidden');
+    });
+  }
+  
+  if (basemapPanelClose) {
+    basemapPanelClose.addEventListener('click', () => {
+      basemapPanel.classList.add('hidden');
+    });
+  }
+  
+  basemapPanel.addEventListener('click', (e) => {
+    if (e.target === basemapPanel) {
+      basemapPanel.classList.add('hidden');
+    }
+  });
+  
+  // Painel de funções
+  const functionsToggleBtn = document.getElementById('functionsToggleBtn');
+  const functionsPanel = document.getElementById('functionsPanel');
+  const functionsPanelClose = document.getElementById('functionsPanelClose');
+  
+  if (functionsToggleBtn) {
+    functionsToggleBtn.addEventListener('click', () => {
+      functionsPanel.classList.toggle('hidden');
+      basemapPanel.classList.add('hidden');
+    });
+  }
+  
+  if (functionsPanelClose) {
+    functionsPanelClose.addEventListener('click', () => {
+      functionsPanel.classList.add('hidden');
+    });
+  }
+  
+  functionsPanel.addEventListener('click', (e) => {
+    if (e.target === functionsPanel) {
+      functionsPanel.classList.add('hidden');
+    }
+  });
+}
+
+// ============================================
+// PAINEL DE BASEMAP
+// ============================================
+function setupBasemapPanel() {
+  const basemapPanelContent = document.getElementById('basemapPanelContent');
+  
+  // Criar cards de basemap
+  Object.entries(basemaps).forEach(([key, basemap]) => {
+    const card = document.createElement('div');
+    card.className = `basemap-card ${key === currentBasemap ? 'active' : ''}`;
+    card.textContent = basemap.name;
+    card.dataset.basemap = key;
+    
+    card.addEventListener('click', () => {
+      switchBasemap(key);
+      // Atualizar UI
+      document.querySelectorAll('.basemap-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      // Fechar painel no mobile
+      if (window.innerWidth <= 768) {
+        document.getElementById('basemapPanel').classList.add('hidden');
+      }
+    });
+    
+    basemapPanelContent.appendChild(card);
+  });
+}
+
+function switchBasemap(basemapName) {
+  if (currentBasemap && basemaps[currentBasemap]) {
+    map.removeLayer(basemaps[currentBasemap].tile);
+  }
+  if (basemaps[basemapName]) {
+    basemaps[basemapName].tile.addTo(map);
+    currentBasemap = basemapName;
+    // Salvar no localStorage
+    localStorage.setItem('selectedBasemap', basemapName);
+  }
+}
+
+// ============================================
+// CONTROLES
+// ============================================
 function setupControls() {
   const zoomFitBtn = document.getElementById('zoomFitBtn');
   const helpBtn = document.getElementById('helpBtn');
@@ -223,6 +410,7 @@ function setupControls() {
   if (helpBtn) {
     helpBtn.addEventListener('click', () => {
       helpModal.classList.remove('hidden');
+      document.getElementById('functionsPanel').classList.add('hidden');
     });
   }
 
@@ -240,11 +428,12 @@ function setupControls() {
     });
   }
 
+  // Atalhos de teclado
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      document.getElementById('searchInput').value = '';
-      filterMarkers();
       helpModal.classList.add('hidden');
+      document.getElementById('basemapPanel').classList.add('hidden');
+      document.getElementById('functionsPanel').classList.add('hidden');
     }
     if (e.key === 'f' || e.key === 'F') {
       zoomToFitAll();
@@ -254,8 +443,16 @@ function setupControls() {
 
 function zoomToFitAll() {
   if (congregationsLayer && congregationsLayer.getLayers().length > 0) {
-    map.fitBounds(congregationsLayer.getBounds(), { padding: [50, 50] });
+    // Contar apenas marcadores visíveis
+    const visibleLayers = congregationsLayer.getLayers().filter(m => m.getOpacity() > 0.5);
+    if (visibleLayers.length > 0) {
+      const bounds = L.featureGroup(visibleLayers).getBounds();
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
   }
 }
 
+// ============================================
+// INICIAR
+// ============================================
 document.addEventListener('DOMContentLoaded', initMap);
