@@ -29,6 +29,9 @@
       <button id="zoomFitSidebarBtn" class="sidebar-btn" title="Encaixar todos" aria-label="Encaixar todos">
         🎯
       </button>
+      <button id="locationSidebarBtn" class="sidebar-btn" title="Minha localização" aria-label="Minha localização">
+        📍
+      </button>
       <button id="helpSidebarBtn" class="sidebar-btn" title="Ajuda e atalhos" aria-label="Ajuda">
         ❓
       </button>
@@ -51,6 +54,10 @@
         </svg>
         <span class="legend-label">Limite do Campo</span>
       </div>
+      <div class="legend-item hidden" id="userLocationLegend">
+        <span class="legend-dot-blue"></span>
+        <span class="legend-label">Minha localização</span>
+      </div>
     </div>
 
     <!-- PAINEL DE PESQUISA COMPACTO (mobile) -->
@@ -70,6 +77,21 @@
           <span id="searchResultsCount">77 congregações</span>
         </div>
         <div id="searchResultsList" class="search-results-list"></div>
+      </div>
+    </div>
+
+    <!-- PAINEL DE LOCALIZAÇÃO -->
+    <div id="locationPanel" class="search-panel hidden">
+      <div class="search-panel-header">
+        <h3>Congregações Próximas</h3>
+        <button id="locationPanelClose" class="search-panel-close" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="search-panel-content">
+        <div class="location-panel-info">
+          <span>Ordenadas por distância</span>
+          <button id="clearLocationBtn" class="clear-location-btn">Remover marcador</button>
+        </div>
+        <div id="nearbyResultsList" class="search-results-list"></div>
       </div>
     </div>
 
@@ -95,8 +117,9 @@
           <h3>Como usar o mapa</h3>
           <ul>
             <li><strong>🔍 Buscar:</strong> Clique na lupa para buscar congregações</li>
+            <li><strong>📍 Localização:</strong> Clique em 📍 para ver as congregações mais próximas de você</li>
             <li><strong>🎯 Encaixar:</strong> Clique em 🎯 para visualizar todas as congregações</li>
-            <li><strong>📍 Marcadores:</strong> Clique em qualquer congregação para ver detalhes</li>
+            <li><strong>📌 Marcadores:</strong> Clique em qualquer congregação para ver detalhes</li>
             <li><strong>🗺️ Camadas:</strong> Use o botão de camadas para trocar o mapa</li>
           </ul>
           <h3>Navegação GPS</h3>
