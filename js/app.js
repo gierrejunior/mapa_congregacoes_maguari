@@ -6,6 +6,8 @@ let congregationsLayer;
 let boundaryLayer;
 let congregationsData = [];
 let currentBasemap = 'osm';
+let userLocationMarker = null;
+let userLocationAccuracyCircle = null;
 
 // Estado do filtro (global)
 const filterState = {
@@ -110,6 +112,7 @@ function initMap() {
   setupPanels();
   setupControls();
   setupBasemapPanel();
+  setupLocation();
   
   console.log('Inicialização completa!');
 }
@@ -240,6 +243,7 @@ function setupSearch() {
   if (searchSidebarBtn) {
     searchSidebarBtn.addEventListener('click', () => {
       searchPanel.classList.remove('hidden');
+      document.getElementById('locationPanel').classList.add('hidden');
       if (searchInput) {
         searchInput.focus();
       }
@@ -424,6 +428,7 @@ function setupPanels() {
       basemapPanel.classList.toggle('hidden');
       searchPanel.classList.add('hidden');
       helpModal.classList.add('hidden');
+      document.getElementById('locationPanel').classList.add('hidden');
     });
   }
   
@@ -500,6 +505,7 @@ function setupControls() {
       helpModal.classList.remove('hidden');
       basemapPanel.classList.add('hidden');
       searchPanel.classList.add('hidden');
+      document.getElementById('locationPanel').classList.add('hidden');
     });
   }
 
@@ -523,6 +529,7 @@ function setupControls() {
       helpModal.classList.add('hidden');
       basemapPanel.classList.add('hidden');
       searchPanel.classList.add('hidden');
+      document.getElementById('locationPanel').classList.add('hidden');
     }
     if (e.key === 'f' || e.key === 'F') {
       zoomToFitAll();
@@ -558,6 +565,170 @@ function zoomToFitAll() {
         }
       }
     }
+  }
+}
+
+// ============================================
+// LOCALIZAÇÃO DO USUÁRIO
+// ============================================
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const dphi = (lat2 - lat1) * Math.PI / 180;
+  const dlambda = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dphi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dlambda / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(meters) {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function showUserOnMap(lat, lng, accuracy) {
+  if (userLocationMarker) map.removeLayer(userLocationMarker);
+  if (userLocationAccuracyCircle) map.removeLayer(userLocationAccuracyCircle);
+
+  const icon = L.divIcon({
+    html: `<div class="user-location-icon"><div class="user-location-pulse"></div><div class="user-location-dot"></div></div>`,
+    className: '',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
+  userLocationMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 });
+  userLocationMarker.bindPopup(`
+    <div class="popup-title">Minha Localização</div>
+    <div class="popup-coordinates">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+  `);
+  userLocationMarker.addTo(map);
+
+  if (accuracy && accuracy < 500) {
+    userLocationAccuracyCircle = L.circle([lat, lng], {
+      radius: accuracy,
+      color: '#2980b9',
+      fillColor: '#2980b9',
+      fillOpacity: 0.08,
+      weight: 1,
+      opacity: 0.4
+    }).addTo(map);
+  }
+
+  document.getElementById('userLocationLegend').classList.remove('hidden');
+}
+
+function clearUserLocation() {
+  if (userLocationMarker) {
+    map.removeLayer(userLocationMarker);
+    userLocationMarker = null;
+  }
+  if (userLocationAccuracyCircle) {
+    map.removeLayer(userLocationAccuracyCircle);
+    userLocationAccuracyCircle = null;
+  }
+  document.getElementById('userLocationLegend').classList.add('hidden');
+  document.getElementById('locationPanel').classList.add('hidden');
+}
+
+function showNearbyPanel(userLat, userLng) {
+  document.getElementById('searchPanel').classList.add('hidden');
+  document.getElementById('basemapPanel').classList.add('hidden');
+  document.getElementById('helpModal').classList.add('hidden');
+  document.getElementById('locationPanel').classList.remove('hidden');
+
+  const sorted = congregationsData
+    .map(feature => {
+      const [lng, lat] = feature.geometry.coordinates;
+      return { feature, distance: haversineDistance(userLat, userLng, lat, lng) };
+    })
+    .sort((a, b) => a.distance - b.distance);
+
+  const list = document.getElementById('nearbyResultsList');
+  list.innerHTML = '';
+
+  sorted.forEach(({ feature, distance }) => {
+    const item = document.createElement('div');
+    item.className = 'congregation-result-item nearby-result-item';
+    item.innerHTML = `
+      <span class="nearby-name">${feature.properties.Name}</span>
+      <span class="nearby-distance">${formatDistance(distance)}</span>
+    `;
+
+    item.addEventListener('click', () => {
+      const [lng, lat] = feature.geometry.coordinates;
+      const marker = congregationsLayer.getLayers().find(m => {
+        const latlng = m.getLatLng();
+        return Math.abs(latlng.lat - lat) < 0.0001 && Math.abs(latlng.lng - lng) < 0.0001;
+      });
+      if (marker) {
+        map.setView(marker.getLatLng(), 16);
+        marker.openPopup();
+        document.getElementById('locationPanel').classList.add('hidden');
+      }
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function setupLocation() {
+  const locationBtn = document.getElementById('locationSidebarBtn');
+  const locationPanelClose = document.getElementById('locationPanelClose');
+  const clearLocationBtn = document.getElementById('clearLocationBtn');
+
+  if (locationBtn) {
+    locationBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        alert('Geolocalização não é suportada neste navegador.');
+        return;
+      }
+
+      // Se já tem localização, apenas recentra e abre o painel
+      if (userLocationMarker) {
+        const latlng = userLocationMarker.getLatLng();
+        map.setView(latlng, 15);
+        showNearbyPanel(latlng.lat, latlng.lng);
+        return;
+      }
+
+      locationBtn.textContent = '⏳';
+      locationBtn.disabled = true;
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          locationBtn.textContent = '📍';
+          locationBtn.disabled = false;
+
+          showUserOnMap(latitude, longitude, accuracy);
+          map.setView([latitude, longitude], 15);
+          showNearbyPanel(latitude, longitude);
+        },
+        (err) => {
+          locationBtn.textContent = '📍';
+          locationBtn.disabled = false;
+
+          const messages = {
+            1: 'Permissão de localização negada. Verifique as configurações do navegador.',
+            2: 'Localização não disponível no momento.',
+            3: 'Tempo esgotado ao obter a localização.'
+          };
+          alert(messages[err.code] || 'Erro ao obter localização.');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    });
+  }
+
+  if (locationPanelClose) {
+    locationPanelClose.addEventListener('click', () => {
+      document.getElementById('locationPanel').classList.add('hidden');
+    });
+  }
+
+  if (clearLocationBtn) {
+    clearLocationBtn.addEventListener('click', clearUserLocation);
   }
 }
 
