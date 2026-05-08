@@ -43,6 +43,45 @@
         <span>Limite do Campo</span>
       </div>
     </div>
+
+    <div class="controls">
+      <button id="zoomFitBtn" class="control-btn" title="Encaixar todos os marcadores">🎯</button>
+      <button id="helpBtn" class="control-btn" title="Ajuda e atalhos">❓</button>
+    </div>
+
+    <div id="helpModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Ajuda e Atalhos</h2>
+          <button class="modal-close" id="closeHelpBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <h3>Como usar o mapa</h3>
+          <ul>
+            <li><strong>🔍 Buscar:</strong> Digite o nome de uma congregação para filtrar marcadores</li>
+            <li><strong>🎯 Encaixar:</strong> Clique no botão 🎯 para visualizar todos os marcadores</li>
+            <li><strong>📍 Marcadores:</strong> Clique em qualquer congregação para ver detalhes</li>
+            <li><strong>🗺️ Basemaps:</strong> Use os botões no canto inferior direito para trocar o mapa</li>
+            <li><strong>📋 Copiar:</strong> Use o botão no popup para copiar as coordenadas</li>
+          </ul>
+          <h3>Navegação GPS</h3>
+          <p>Clique em um marcador e use os botões para abrir em:</p>
+          <ul>
+            <li>📍 <strong>Waze</strong> - Navegação GPS em tempo real</li>
+            <li>🗺️ <strong>Google Maps</strong> - Mapa e instruções de direção</li>
+          </ul>
+          <h3>Atalhos de Teclado</h3>
+          <ul>
+            <li><strong>ESC:</strong> Limpar busca</li>
+            <li><strong>F:</strong> Encaixar todos os marcadores</li>
+          </ul>
+          <p style="margin-top: 20px; font-size: 12px; color: #666;">
+            Mapa de Congregações - Campo Maguari, Belém - PA<br>
+            Desenvolvido com Leaflet.js e dados em formato GeoJSON
+          </p>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>

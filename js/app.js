@@ -62,6 +62,7 @@ function initMap() {
 
   loadData();
   setupSearch();
+  setupControls();
 }
 
 function switchBasemap(basemapName) {
@@ -206,6 +207,54 @@ function updateStats() {
   const statsValue = document.querySelector('.stats-value');
   if (statsValue) {
     statsValue.textContent = congregationsData.length;
+  }
+}
+
+function setupControls() {
+  const zoomFitBtn = document.getElementById('zoomFitBtn');
+  const helpBtn = document.getElementById('helpBtn');
+  const helpModal = document.getElementById('helpModal');
+  const closeHelpBtn = document.getElementById('closeHelpBtn');
+
+  if (zoomFitBtn) {
+    zoomFitBtn.addEventListener('click', zoomToFitAll);
+  }
+
+  if (helpBtn) {
+    helpBtn.addEventListener('click', () => {
+      helpModal.classList.remove('hidden');
+    });
+  }
+
+  if (closeHelpBtn) {
+    closeHelpBtn.addEventListener('click', () => {
+      helpModal.classList.add('hidden');
+    });
+  }
+
+  if (helpModal) {
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) {
+        helpModal.classList.add('hidden');
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.getElementById('searchInput').value = '';
+      filterMarkers();
+      helpModal.classList.add('hidden');
+    }
+    if (e.key === 'f' || e.key === 'F') {
+      zoomToFitAll();
+    }
+  });
+}
+
+function zoomToFitAll() {
+  if (congregationsLayer && congregationsLayer.getLayers().length > 0) {
+    map.fitBounds(congregationsLayer.getBounds(), { padding: [50, 50] });
   }
 }
 
