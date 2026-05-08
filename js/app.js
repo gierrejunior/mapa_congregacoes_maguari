@@ -59,21 +59,48 @@ const basemaps = {
 // CARREGAR DADOS
 // ============================================
 async function loadGeoJSON(filePath) {
-  const response = await fetch(filePath);
-  if (!response.ok) throw new Error(`Failed to load ${filePath}`);
-  return response.json();
+  console.log(`Carregando ${filePath}...`);
+  try {
+    const response = await fetch(filePath);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    console.log(`✓ ${filePath} carregado com sucesso`);
+    return data;
+  } catch (error) {
+    console.error(`✗ Erro ao carregar ${filePath}:`, error);
+    throw error;
+  }
 }
 
 // ============================================
 // INICIALIZAR MAPA
 // ============================================
 function initMap() {
+  console.log('Inicializando mapa...');
+  
+  // Verificar se Leaflet está disponível
+  if (typeof L === 'undefined') {
+    alert('Erro: Leaflet.js não carregou. Verifique a conexão com a internet.');
+    return;
+  }
+
+  // Verificar se o container existe
+  const mapContainer = document.getElementById('map');
+  if (!mapContainer) {
+    alert('Erro: Elemento #map não encontrado no HTML.');
+    return;
+  }
+
   map = L.map('map').setView([-1.345, -48.380], 14);
   
   // Carregar basemap do localStorage ou usar padrão
   const savedBasemap = localStorage.getItem('selectedBasemap') || 'osm';
   currentBasemap = savedBasemap;
   basemaps[currentBasemap].tile.addTo(map);
+  
+  console.log('Mapa criado. Carregando dados...');
   
   // Carregar dados
   loadData();
@@ -83,6 +110,8 @@ function initMap() {
   setupPanels();
   setupControls();
   setupBasemapPanel();
+  
+  console.log('Inicialização completa!');
 }
 
 // ============================================
@@ -90,6 +119,8 @@ function initMap() {
 // ============================================
 async function loadData() {
   try {
+    console.log('Iniciando carregamento de dados GeoJSON...');
+    
     const [congregacoes, limiteData] = await Promise.all([
       loadGeoJSON('data/congregacoes.geojson'),
       loadGeoJSON('data/limite_campo.geojson')
@@ -99,12 +130,16 @@ async function loadData() {
     filterState.totalCount = congregationsData.length;
     filterState.activeCount = congregationsData.length;
     
+    console.log(`Dados carregados: ${congregationsData.length} congregações`);
+    
     renderBoundary(limiteData);
     renderMarkers();
     updateStats();
+    
+    console.log('Dados renderizados com sucesso!');
   } catch (error) {
-    console.error('Error loading data:', error);
-    alert('Erro ao carregar dados. Verifique se os arquivos GeoJSON estão corretos.');
+    console.error('Erro ao carregar dados:', error);
+    alert(`Erro ao carregar dados:\n\n${error.message}\n\nVerifique:\n1. Se está usando um servidor HTTP (não abra o arquivo diretamente)\n2. Se os arquivos estão em: data/congregacoes.geojson e data/limite_campo.geojson\n3. Se o servidor está rodando na porta 8000`);
   }
 }
 
@@ -432,4 +467,5 @@ function zoomToFitAll() {
 // ============================================
 // INICIAR
 // ============================================
+console.log('App.js carregado. Aguardando DOMContentLoaded...');
 document.addEventListener('DOMContentLoaded', initMap);
