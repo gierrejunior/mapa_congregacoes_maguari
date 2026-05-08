@@ -250,6 +250,7 @@ function setupSearch() {
   if (searchPanelClose) {
     searchPanelClose.addEventListener('click', () => {
       searchPanel.classList.add('hidden');
+      clearFilter();
     });
   }
   
